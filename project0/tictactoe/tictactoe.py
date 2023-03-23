@@ -171,9 +171,9 @@ def main():
     this function is used to test the program
     """
     board1 = [
-        [X, O, EMPTY],
-        [X, X, O],
-        [EMPTY, EMPTY, O] 
+        [O, X, EMPTY],
+        [EMPTY, O, X],
+        [EMPTY, EMPTY, EMPTY] 
     ]
     minimax(board1)
 
