@@ -193,7 +193,7 @@ class MinesweeperAI():
         self.moves_made.add(cell)
 
         # mark the cell as safe
-        self.safes.add(cell)
+        self.mark_safe(cell)
 
         # add a new sentence to the AI's knowledge base
         # based on the value of `cell` and `count`
@@ -204,57 +204,88 @@ class MinesweeperAI():
                 if x+i < 0 or x+i >=self.height or y+j < 0 or y+j >= self.width or (i == j == 0):
                     continue
                 possible_cells.add((x + i, y + j))
-        wrong_move = set()
-        for move in possible_cells:
-            if move in self.mines:
-                wrong_move.add(move)
-                count -= 1
-            elif move in self.moves_made or move in self.safes:
-                wrong_move.add(move)
-        for move in wrong_move:
-            possible_cells.remove(move)
-        self.knowledge.append(Sentence(possible_cells, count))
+        possible_cells -= self.safes
+        neighbor_known_mines = len(possible_cells & self.mines)
+        possible_cells -= self.mines
+        possible_cells -= self.moves_made
+        self.knowledge.append(Sentence(possible_cells, count-neighbor_known_mines))
 
         # mark any additional cells as safe or as mines
         # if it can be concluded based on the AI's knowledge base
-        new_mines = []
-        new_safes = []
-        for sentence in self.knowledge:
-            sentence.mark_safe(cell)
-            if sentence.known_mines():
-                new_mines += list(sentence.known_mines())
-            if sentence.known_safes():
-                new_safes += list(sentence.known_safes())
-        while True:
-            while len(new_safes) != 0:
-                safe = new_safes.pop()
-                for sentence in self.knowledge:
-                    sentence.mark_safe(safe)
-                    if sentence.known_mines():
-                        new_mines += list(sentence.known_mines())
-                    if sentence.known_safes():
-                        new_safes += list(sentence.known_safes())
-            while len(new_mines) != 0:
-                mine = new_mines.pop()
-                for sentence in self.knowledge:
-                    sentence.mark_mine(mine)
-                    if sentence.known_mines():
-                        new_mines += list(sentence.known_mines())
-                    if sentence.known_safes():
-                        new_safes += list(sentence.known_safes())
-            if len(new_mines) == 0 and len(new_safes) == 0:
-                break
+        def add(self):
+            """
+            return a positive number if there is anything updated
+            """
+            cnt = 0
+            new_mines = []
+            new_safes = []
+            for sentence in self.knowledge:
+                if sentence.known_mines():
+                    cnt += 1
+                    new_mines += list(sentence.known_mines())
+                    self.knowledge.remove(sentence)
+                if sentence.known_safes():
+                    cnt += 1
+                    new_safes += list(sentence.known_safes())
+                    self.knowledge.remove(sentence)
+            while True:
+                while len(new_safes) != 0:
+                    safe = new_safes.pop()
+                    self.mark_safe(safe)
+                    for sentence in self.knowledge:
+                        if sentence.known_mines():
+                            cnt += 1
+                            new_mines += list(sentence.known_mines())
+                        if sentence.known_safes():
+                            cnt += 1
+                            new_safes += list(sentence.known_safes())
+                while len(new_mines) != 0:
+                    mine = new_mines.pop()
+                    self.mark_mine(mine)
+                    for sentence in self.knowledge:
+                        if sentence.known_mines():
+                            cnt += 1
+                            new_mines += list(sentence.known_mines())
+                        if sentence.known_safes():
+                            cnt += 1
+                            new_safes += list(sentence.known_safes())
+                if len(new_mines) == 0 and len(new_safes) == 0:
+                    return cnt
 
         # add any new sentences to the AI's knowledge base
         # if they can be inferred from existing knowledge
-        for i in range(len(self.knowledge)):
-            for j in range(i+1, len(self.knowledge)):
-                sentence1, sentence2 = self.knowledge[i], self.knowledge[j]
-                if sentence1.cells.intersection(sentence2.cells):
-                    intersection = sentence1.cells.intersection(sentence2.cells)
-                    cnt = abs(sentence1.count - sentence2.count)
-                    self.knowledge.append(Sentence(intersection, cnt))
-            
+        def infer(self):
+            cnt = 0
+            for i in range(len(self.knowledge)):
+                for j in range(i + 1, len(self.knowledge)):
+                    flag = False
+                    sentence1, sentence2 = self.knowledge[i], self.knowledge[j]
+                    if sentence1.cells < sentence2.cells:
+                        newpart = sentence2.cells - sentence1.cells
+                        mine_cnt = sentence2.count - sentence1.count
+                    elif sentence1.cells > sentence2.cells:
+                        newpart = sentence1.cells - sentence2.cells
+                        mine_cnt = sentence1.count - sentence2.count
+                    else:
+                        continue
+                    if not newpart:
+                        continue
+                    tmp = Sentence(newpart, mine_cnt)
+                    for sentence in self.knowledge:
+                        if tmp == sentence:
+                            flag = True
+                            break
+                    if flag:
+                        continue
+                    self.knowledge.append(tmp)
+                    cnt += 1
+            return cnt
+        
+        while True:
+            add_cnt = add(self)
+            infer_cnt = infer(self)
+            if not add_cnt and not infer_cnt:
+                break
 
     def make_safe_move(self):
         """
@@ -277,9 +308,12 @@ class MinesweeperAI():
             1) have not already been chosen, and
             2) are not known to be mines
         """
-        x = random.randint(0, self.width) % self.width
-        y = random.randint(0, self.height) % self.height
-        while (x, y) in self.moves_made or (x, y) in self.mines:
-            x = random.randint(0, self.width) % self.width
-            y = random.randint(0, self.height) % self.height
-        return (x, y)
+        possible_moves = set()
+        for i in range(self.width):
+            for j in range(self.height):
+                possible_moves.add((i, j))
+        possible_moves -= self.moves_made
+        possible_moves -= self.mines
+        if len(possible_moves) == 0:
+            return None
+        return possible_moves.pop()
