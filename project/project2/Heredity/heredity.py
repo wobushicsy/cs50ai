@@ -38,6 +38,7 @@ PROBS = {
 
 
 def main():
+    sys.argv.append(".\\data\\family0.csv")
 
     # Check for proper usage
     if len(sys.argv) != 2:
@@ -139,7 +140,64 @@ def joint_probability(people, one_gene, two_genes, have_trait):
         * everyone in set `have_trait` has the trait, and
         * everyone not in set` have_trait` does not have the trait.
     """
-    raise NotImplementedError
+
+    """
+    assume that a person is either no parents or has father and mother both
+    """
+
+    """
+    data example
+    people = {
+        'Harry':{'name':'Harry', 'mother':'Lily', 'father':'James', 'trait':None},
+        'James':{'name': 'James', 'mother': None, 'father': None, 'trait': True},
+        'Lily':{'name': 'Lily', 'mother': None, 'father': None, 'trait': False}
+    }
+    """
+    def parent_pass_gene_probability(child_gene_num, parent_give_gene):
+        if parent_give_gene:
+            if child_gene_num == 0:
+                return PROBS['mutation']
+            elif child_gene_num == 1:
+                return 0.5
+            else:
+                return 1 - PROBS['mutation']
+        else:
+            if child_gene_num == 0:
+                return 1 - PROBS['mutation']
+            elif child_gene_num == 1:
+                return 0.5
+            else:
+                return PROBS["mutation"]
+    data = {
+        name:{
+            'gene': 1 if name in one_gene else
+                    2 if name in two_genes else
+                    0,
+            'trait':True if name in have_trait else False
+        }
+        for name in people.keys()
+    }
+    joint_prob = 1
+    for person in people.keys():
+        joint_prob *= PROBS['trait'][data[person]['gene']][data[person]['trait']]          
+        if people[person]['mother'] == None and people[person]['father'] == None:
+            joint_prob *= PROBS["gene"][data[person]['gene']]
+        else:
+            gene_num = data[person]["gene"]
+            mum = people[person]["mother"]
+            dad = people[person]["father"]
+            mum_gene = data[mum]["gene"]
+            dad_gene = data[dad]["gene"]
+            if gene_num == 0:
+                joint_prob *= parent_pass_gene_probability(mum_gene, False)
+                joint_prob *= parent_pass_gene_probability(dad_gene, False)
+            elif gene_num == 1:
+                p1 = parent_pass_gene_probability(mum_gene, True)*parent_pass_gene_probability(dad_gene, False)
+                p2 = parent_pass_gene_probability(mum_gene, False)*parent_pass_gene_probability(dad_gene, True)
+                joint_prob *= (p1 + p2)
+            else:
+                joint_prob *= parent_pass_gene_probability(mum_gene, True)*parent_pass_gene_probability(dad_gene, True)
+        return joint_prob
 
 
 def update(probabilities, one_gene, two_genes, have_trait, p):
