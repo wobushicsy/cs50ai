@@ -38,7 +38,6 @@ PROBS = {
 
 
 def main():
-    sys.argv.append(".\\data\\family0.csv")
 
     # Check for proper usage
     if len(sys.argv) != 2:
@@ -183,21 +182,21 @@ def joint_probability(people, one_gene, two_genes, have_trait):
         if people[person]['mother'] == None and people[person]['father'] == None:
             joint_prob *= PROBS["gene"][data[person]['gene']]
         else:
-            gene_num = data[person]["gene"]
-            mum = people[person]["mother"]
-            dad = people[person]["father"]
-            mum_gene = data[mum]["gene"]
-            dad_gene = data[dad]["gene"]
-            if gene_num == 0:
+            mother_gene = data[person]["gene"]
+            mother = people[person]["mother"]
+            father = people[person]["father"]
+            mum_gene = data[mother]["gene"]
+            dad_gene = data[father]["gene"]
+            if mother_gene == 0:
                 joint_prob *= parent_pass_gene_probability(mum_gene, False)
                 joint_prob *= parent_pass_gene_probability(dad_gene, False)
-            elif gene_num == 1:
-                p1 = parent_pass_gene_probability(mum_gene, True)*parent_pass_gene_probability(dad_gene, False)
-                p2 = parent_pass_gene_probability(mum_gene, False)*parent_pass_gene_probability(dad_gene, True)
-                joint_prob *= (p1 + p2)
+            elif mother_gene == 1:
+                prob1 = parent_pass_gene_probability(mum_gene, True)*parent_pass_gene_probability(dad_gene, False)
+                prob2 = parent_pass_gene_probability(mum_gene, False)*parent_pass_gene_probability(dad_gene, True)
+                joint_prob *= (prob1 + prob2)
             else:
                 joint_prob *= parent_pass_gene_probability(mum_gene, True)*parent_pass_gene_probability(dad_gene, True)
-        return joint_prob
+    return joint_prob
 
 
 def update(probabilities, one_gene, two_genes, have_trait, p):
@@ -207,7 +206,17 @@ def update(probabilities, one_gene, two_genes, have_trait, p):
     Which value for each distribution is updated depends on whether
     the person is in `have_gene` and `have_trait`, respectively.
     """
-    raise NotImplementedError
+    data = {
+        name:{
+            "gene" : 1 if name in one_gene else
+                     2 if name in two_genes else 0,
+            "trait" : True if name in have_trait else False
+        }
+        for name in probabilities.keys()
+    }
+    for person in probabilities.keys():
+        probabilities[person]["gene"][data[person]["gene"]] += p
+        probabilities[person]["trait"][data[person]["trait"]] += p
 
 
 def normalize(probabilities):
@@ -215,7 +224,14 @@ def normalize(probabilities):
     Update `probabilities` such that each probability distribution
     is normalized (i.e., sums to 1, with relative proportions the same).
     """
-    raise NotImplementedError
+    for person in probabilities.keys():
+        normalizer = sum(probabilities[person]["gene"].values())
+        for gene in probabilities[person]["gene"]:
+            probabilities[person]["gene"][gene] /= normalizer
+
+        normalizer = sum(probabilities[person]["trait"].values())
+        for trait in probabilities[person]["trait"]:
+            probabilities[person]["trait"][trait] /= normalizer
 
 
 if __name__ == "__main__":
