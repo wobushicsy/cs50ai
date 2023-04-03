@@ -255,6 +255,9 @@ class MinesweeperAI():
         # add any new sentences to the AI's knowledge base
         # if they can be inferred from existing knowledge
         def infer(self):
+            """
+            return a positive number if there is anything updated
+            """
             cnt = 0
             for i in range(len(self.knowledge)):
                 for j in range(i + 1, len(self.knowledge)):
