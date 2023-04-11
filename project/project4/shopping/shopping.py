@@ -9,6 +9,8 @@ TEST_SIZE = 0.4
 
 def main():
 
+    # sys.argv.append("shopping.csv")       this code is for test
+
     # Check command-line arguments
     if len(sys.argv) != 2:
         sys.exit("Usage: python shopping.py data")
@@ -59,7 +61,38 @@ def load_data(filename):
     labels should be the corresponding list of labels, where each label
     is 1 if Revenue is true, and 0 otherwise.
     """
-    raise NotImplementedError
+    month = {
+        "Feb": 1, "Mar": 2, "Apr": 3, "May": 4, "June": 5,
+        "Jul": 6, "Aug":7, "Sep": 8, "Oct": 9, "Nov": 11, 
+        "Dec": 12, "Jan": 0
+    }
+    label = {
+        "FALSE": 0, "TRUE": 1
+    }
+    evidences = []
+    labels = []
+    with open(filename) as file:
+        reader = csv.reader(file)
+        next(reader)
+        for data in reader:
+            evidence = []
+            for _ in range(3):
+                evidence.append(int(data[0]))
+                evidence.append(float(data[1]))
+                data = data[2:]
+            for _ in range(4):
+                evidence.append(float(data[0]))
+                data = data[1:]
+            evidence.append(month[data[0]])
+            data = data[1:]
+            for _ in range(4):
+                evidence.append(int(data[0]))
+                data = data[1:]
+            evidence.append(1 if data[0] == "Returning_Visitor" else 0)
+            evidence.append(label[data[1]])
+            labels.append(label[data[-1]])
+            evidences.append(evidence)
+    return (evidences, labels)
 
 
 def train_model(evidence, labels):
@@ -67,8 +100,9 @@ def train_model(evidence, labels):
     Given a list of evidence lists and a list of labels, return a
     fitted k-nearest neighbor model (k=1) trained on the data.
     """
-    raise NotImplementedError
-
+    model = KNeighborsClassifier(n_neighbors=1)
+    model.fit(evidence, labels)
+    return model
 
 def evaluate(labels, predictions):
     """
@@ -85,7 +119,20 @@ def evaluate(labels, predictions):
     representing the "true negative rate": the proportion of
     actual negative labels that were accurately identified.
     """
-    raise NotImplementedError
+    true_labels = 0
+    false_labels = 0
+    true_predictions = 0
+    false_predictions = 0
+    for i in range(len(labels)):
+        if labels[i] == 1:
+            true_labels += 1
+            if predictions[i] == 1:
+                true_predictions += 1
+        elif labels[i] == 0:
+            false_labels += 1
+            if predictions[i] == 0:
+                false_predictions += 1
+    return (true_predictions/true_labels, false_predictions/false_labels)
 
 
 if __name__ == "__main__":
